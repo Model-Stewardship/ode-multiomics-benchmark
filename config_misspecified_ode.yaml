@@ -1,0 +1,55 @@
+# ODE Misspecification Experiment Configuration
+# Tests MOTIF under progressively incorrect ODE assumptions
+# Ground truth always generated from full 6-variable model
+
+experiment_name: misspecified_ode
+description: "MOTIF vulnerability: proxy recovery degrades as ODE model loses variables"
+
+data:
+  n_patients: 500
+  noise_sigma: 0.10
+  timepoints: [0, 6, 12, 24, 48, 72]
+  parameter_cv: 0.15
+  random_seed: 42
+  train_fraction: 0.80
+
+# Ground truth is always the full 6-variable model
+ground_truth_ode:
+  n_vars: 6
+
+# MOTIF is run with progressively misspecified models
+sweep:
+  parameter: motif_ode_n_vars
+  values: [6, 5, 4, 3]
+  n_replicates: 3
+  descriptions:
+    6: "Correct model (P, N*, D, CA, f)"
+    5: "Missing D — 5-var model (P, N*, CA, f; D collapsed into N*)"
+    4: "Simplified — 4-var model (P, N*, CA, f; no explicit D term)"
+    3: "Severely misspecified — linear 3-var model (P, N*, CA)"
+
+# Model specifications for each misspecification level
+# These are passed to the MOTIF calibration step
+misspecification_models:
+  5:
+    description: "Remove D variable; fold k_dn term into N* self-amplification"
+    removed_vars: [D]
+    modified_equations:
+      Nstar: "add k_dn * Nstar term to approximate D contribution"
+  4:
+    description: "Remove D variable entirely; no compensation"
+    removed_vars: [D]
+    modified_equations:
+      Nstar: "original equation without D input"
+  3:
+    description: "Linear approximation of P, N*, CA only"
+    removed_vars: [D, f]
+    modified_equations:
+      P: "dP/dt = k_pg*P - k_pm*Nstar*P - mu_p*P (linear clearance)"
+      Nstar: "dNstar/dt = s_nr*P/(s_nm+P) * (1-Nstar/N_inf) - mu_nr*Nstar"
+      CA: "dCA/dt = s_c*Nstar^2/(s_cn^2+Nstar^2) - mu_c*CA"
+
+output:
+  results_dir: results/misspecified_ode/
+  figures_dir: figures/misspecified_ode/
+  key_figure: fig6_misspecification

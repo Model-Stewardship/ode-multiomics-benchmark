@@ -1,0 +1,103 @@
+# Baseline Experiment Configuration
+# All other experiment configs inherit from these defaults
+
+experiment_name: baseline
+description: "Baseline comparison: N=500 patients, 10% noise, 6 timepoints, correct ODE"
+
+# Data generation
+data:
+  n_patients: 500
+  n_resolution: 200       # P0 ~ Uniform(0.5, 3.5)
+  n_chronic: 150          # P0 ~ Uniform(4.0, 9.0)
+  n_death: 150            # P0 ~ Uniform(11.0, 20.0)
+  noise_sigma: 0.10       # coefficient of variation (proportional noise)
+  timepoints: [0, 6, 12, 24, 48, 72]   # hours
+  parameter_cv: 0.15      # inter-patient parameter variability (lognormal SD)
+  random_seed: 42
+  train_fraction: 0.80
+
+# ODE solver settings
+ode:
+  n_vars: 6               # full model (set to 5 or 4 for misspecification expts)
+  method: Radau            # stiff solver — required for chronic basin
+  t_fine_n: 1000          # number of points for fine-resolution trajectory
+  t_max: 72               # hours
+
+# MOTIF pipeline settings
+motif:
+  n_calibration_restarts: 3
+  calibration_method: L-BFGS-B
+  calibration_params:     # parameters to optimise (others held fixed)
+    - k_pg
+    - mu_p
+    - s_nr
+    - s_c
+    - P0               # initial pathogen load (free parameter since P unobserved)
+  P0_init: 5.0         # initial guess for unobserved P0
+  P0_bounds: [0.1, 20.0]
+  proxy_summary_stats:
+    - auc
+    - peak
+    - final_value      # value at t=72h
+  correlation_method: spearman
+
+# UDE pipeline settings
+ude:
+  # Neural network architecture
+  input_dim: 3           # [N*, CA, f]
+  hidden_dim: 32
+  n_hidden_layers: 2
+  activation: tanh
+  output_activation: softplus   # ensures non-negative clearance rate
+  # Training
+  n_epochs: 500
+  learning_rate: 0.001
+  batch_size: 32           # number of patients per batch
+  grad_clip_norm: 1.0
+  scheduler: cosine        # learning rate schedule: 'cosine', 'step', or 'none'
+  # P0 estimation
+  P0_init: 5.0
+  P0_lr: 0.01              # separate LR for P0 parameters
+  # ODE integration during training
+  ode_method: rk4
+  ode_rtol: 1.0e-3
+  ode_atol: 1.0e-4
+
+# SINDy settings
+sindy:
+  feature_library: polynomial
+  degree: 2
+  include_interaction: true
+  optimizer: STLSQ
+  threshold: 0.05
+  max_iter: 10000
+  # Grid for NN evaluation
+  grid_n_points: 50       # per dimension → 50^3 = 125,000 grid points
+  grid_Nstar_range: [0.0, 0.6]
+  grid_CA_range: [0.0, 0.4]
+  grid_f_range: [0.0, 1.0]
+
+# Classification settings
+classification:
+  model: logistic_regression
+  max_iter: 1000
+  cv_folds: 5
+  metrics:
+    - auroc
+    - f1_macro
+    - confusion_matrix
+
+# Evaluation
+evaluation:
+  n_replicates: 5        # number of random seeds for stability estimates
+  bootstrap_n: 1000      # for confidence interval estimation
+
+# Output
+output:
+  results_dir: results/
+  figures_dir: figures/
+  save_patient_data: true
+  save_model_weights: true    # save UDE NN weights for inspection
+  figure_dpi: 300
+  figure_formats: [pdf, png]
+  linkedin_figures: true      # also save 1080x1080 LinkedIn versions

@@ -1,0 +1,46 @@
+# Sparse Data Experiment Configuration
+# Tests both pipelines as patient count decreases
+
+experiment_name: sparse_data
+description: "Sparsity sweep: vary N_patients from 500 down to 10"
+
+# Inherit all defaults from config_baseline.yaml except where overridden below
+
+data:
+  noise_sigma: 0.10          # held fixed
+  timepoints: [0, 6, 12, 24, 48, 72]
+  parameter_cv: 0.15
+  random_seed: 42
+  train_fraction: 0.80
+
+sweep:
+  parameter: n_patients
+  values: [500, 200, 100, 50, 20, 10]
+  n_replicates: 5
+  # Note: at N=10, use 5-fold CV instead of 80/20 split
+  # Classification becomes unreliable below N=20
+
+# All other settings same as baseline — see config_baseline.yaml
+ode:
+  n_vars: 6
+  method: Radau
+
+motif:
+  n_calibration_restarts: 3
+  calibration_method: L-BFGS-B
+  calibration_params: [k_pg, mu_p, s_nr, s_c, P0]
+  P0_init: 5.0
+
+ude:
+  hidden_dim: 32
+  n_epochs: 500
+  learning_rate: 0.001
+  batch_size: 16      # reduced batch size for small N
+
+sindy:
+  degree: 2
+  threshold: 0.05
+
+output:
+  results_dir: results/sparse_data/
+  figures_dir: figures/sparse_data/
