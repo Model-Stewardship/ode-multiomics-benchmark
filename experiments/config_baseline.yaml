@@ -1,0 +1,19 @@
+experiment_name: baseline
+n_patients: 500
+noise_sigma: 0.10
+n_timepoints: 6
+ode_n_vars: 6
+n_replicates: 5
+random_seed: 42
+
+ude:
+  n_epochs: 500
+  lr: 0.001
+  hidden_dim: 32
+  batch_size: 32
+
+sindy:
+  degree: 2
+  threshold: 0.05
+
+output_dir: results/
