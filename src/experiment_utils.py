@@ -75,4 +75,5 @@ class ExperimentConfig:
                 'degree': self.sindy.degree,
                 'threshold': self.sindy.threshold,
             },
+            'output_dir': self.output_dir,
         }
