@@ -33,10 +33,12 @@ def run_single_replicate(config: ExperimentConfig, replicate_id: int,
 
     # Generate synthetic cohort
     seed = config.random_seed + replicate_id
+    base = config.n_patients // 3
+    remainder = config.n_patients % 3
     cohort = generate_cohort(
-        N_resolution=config.n_patients // 3,
-        N_chronic=config.n_patients // 3,
-        N_death=config.n_patients // 3,
+        N_resolution=base + (1 if remainder > 0 else 0),
+        N_chronic=base + (1 if remainder > 1 else 0),
+        N_death=base,
         seed=seed,
         verbose=False
     )
