@@ -174,7 +174,7 @@ def train_ude(
     nn_model = nn_model.to(DEVICE)
     optimizer = torch.optim.Adam(nn_model.parameters(), lr=config.get('lr', 1e-3))
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='min', factor=0.5, patience=50, verbose=False
+        optimizer, mode='min', factor=0.5, patience=50
     )
 
     history = {'epoch': [], 'loss': [], 'lr': []}
