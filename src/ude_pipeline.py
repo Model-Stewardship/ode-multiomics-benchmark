@@ -54,6 +54,11 @@ class UDENet(nn.Module):
             nn.Linear(hidden_dim, output_dim),
             nn.Softplus(),  # Ensure non-negative output (rate)
         )
+        # Initialize weights to be small for stability
+        for layer in self.net:
+            if isinstance(layer, nn.Linear):
+                nn.init.normal_(layer.weight, mean=0.0, std=0.01)
+                nn.init.constant_(layer.bias, 0.0)
 
     def forward(self, z: torch.Tensor) -> torch.Tensor:
         """
