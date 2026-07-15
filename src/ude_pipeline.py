@@ -91,7 +91,12 @@ def ude_system(
     Returns:
         dx/dt: Derivative vector [dP/dt, dN*/dt, dD/dt, dCA/dt, df/dt]
     """
+    # Clamp states to valid ranges to prevent numerical issues
+    x = torch.clamp(x, min=0.0)
+    x = x.clone()
+
     P, Nstar, D, CA, f = x[0], x[1], x[2], x[3], x[4]
+    f = torch.clamp(f, 0.0, 1.0)  # Tissue damage fraction must be in [0, 1]
     p = known_params
 
     # Derived quantity
