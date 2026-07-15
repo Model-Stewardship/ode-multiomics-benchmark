@@ -206,8 +206,8 @@ def train_ude(
                 obs_CA = torch.tensor(patient['obs_CA'], dtype=torch.float32, device=DEVICE)
                 obs_f = torch.tensor(patient['obs_f'], dtype=torch.float32, device=DEVICE)
 
-                # Initial condition: estimate P0 (learnable per patient or fixed)
-                P0_init = torch.tensor(5.0, dtype=torch.float32, device=DEVICE)
+                # Initial condition: use patient's actual P0
+                P0_init = torch.tensor(patient['P0'], dtype=torch.float32, device=DEVICE)
                 x0 = torch.stack([P0_init, obs_Nstar[0], torch.tensor(0.0, device=DEVICE),
                                   obs_CA[0], obs_f[0]], dim=0)
 
