@@ -185,6 +185,7 @@ def train_ude(
     else:
         pbar = range(n_epochs)
 
+    n_failed_ode = 0
     for epoch in pbar:
         # Shuffle patients
         shuffled_idx = np.random.permutation(len(patients))
@@ -192,10 +193,12 @@ def train_ude(
 
         total_loss = 0.0
         n_batches = 0
+        n_epoch_failed = 0
 
         for batch_start in range(0, len(patients), batch_size):
             batch_idx = shuffled_idx[batch_start:batch_start + batch_size]
             batch_loss = 0.0
+            batch_count = 0
 
             for idx in batch_idx:
                 patient = patients[idx]
@@ -206,10 +209,20 @@ def train_ude(
                 obs_CA = torch.tensor(patient['obs_CA'], dtype=torch.float32, device=DEVICE)
                 obs_f = torch.tensor(patient['obs_f'], dtype=torch.float32, device=DEVICE)
 
-                # Initial condition: use patient's actual P0
+                # Check for NaN in input data
+                if torch.isnan(obs_Nstar).any() or torch.isnan(obs_CA).any() or torch.isnan(obs_f).any():
+                    if epoch == 0 and verbose:
+                        print(f"Warning: Input data contains NaN for patient {idx}")
+                    n_epoch_failed += 1
+                    continue
+
+                # Initial condition: true initial state (P0, Nstar=0, D=0, CA=0, f=0)
                 P0_init = torch.tensor(patient['P0'], dtype=torch.float32, device=DEVICE)
-                x0 = torch.stack([P0_init, obs_Nstar[0], torch.tensor(0.0, device=DEVICE),
-                                  obs_CA[0], obs_f[0]], dim=0)
+                x0 = torch.stack([P0_init,
+                                  torch.tensor(0.0, device=DEVICE),  # Nstar(0) = 0
+                                  torch.tensor(0.0, device=DEVICE),  # D(0) = 0
+                                  torch.tensor(0.0, device=DEVICE),  # CA(0) = 0
+                                  torch.tensor(0.0, device=DEVICE)], dim=0)  # f(0) = 0
 
                 # Convert known_params to torch tensors
                 torch_params = {k: torch.tensor(v, dtype=torch.float32, device=DEVICE)
@@ -220,10 +233,12 @@ def train_ude(
                     def ode_func(t, x):
                         return ude_system(t, x, nn_model, torch_params)
 
-                    pred_traj = odeint(ode_func, x0, t_obs, method='rk4')
+                    pred_traj = odeint(ode_func, x0, t_obs, method='rk4', rtol=1e-3, atol=1e-4)
                 except Exception as e:
-                    if verbose:
+                    if epoch == 0 and verbose:
                         print(f"ODE integration failed for patient {idx}: {e}")
+                    n_epoch_failed += 1
+                    n_failed_ode += 1
                     continue
 
                 # Extract observed predictions
@@ -231,16 +246,30 @@ def train_ude(
                 obs_pred_CA = pred_traj[:, 3]
                 obs_pred_f = pred_traj[:, 4]
 
+                # Check for NaN in predictions
+                if torch.isnan(obs_pred_Nstar).any() or torch.isnan(obs_pred_CA).any() or torch.isnan(obs_pred_f).any():
+                    if epoch == 0 and verbose:
+                        print(f"Warning: NaN in predictions for patient {idx}")
+                    n_epoch_failed += 1
+                    continue
+
                 # Loss on observed variables only
                 loss = (F.mse_loss(obs_pred_Nstar, obs_Nstar) +
                        F.mse_loss(obs_pred_CA, obs_CA) +
                        F.mse_loss(obs_pred_f, obs_f))
 
+                if torch.isnan(loss):
+                    if epoch == 0 and verbose:
+                        print(f"Warning: NaN loss for patient {idx}")
+                    n_epoch_failed += 1
+                    continue
+
                 batch_loss += loss
+                batch_count += 1
                 n_batches += 1
 
-            if n_batches > 0:
-                batch_loss = batch_loss / n_batches
+            if batch_count > 0:
+                batch_loss = batch_loss / batch_count
                 total_loss += batch_loss.item()
 
                 optimizer.zero_grad()
@@ -255,7 +284,12 @@ def train_ude(
                 optimizer.step()
 
         # Average loss over epoch
-        avg_loss = total_loss / max(1, len(patients) // batch_size)
+        if n_batches > 0:
+            avg_loss = total_loss / (len(patients) // batch_size + (1 if len(patients) % batch_size else 0))
+        else:
+            avg_loss = float('nan')
+            if epoch == 0 and verbose:
+                print(f"Warning: No valid training samples in epoch {epoch}. Failed ODE: {n_epoch_failed}/{len(patients)}")
         history['epoch'].append(epoch)
         history['loss'].append(avg_loss)
         history['lr'].append(optimizer.param_groups[0]['lr'])
