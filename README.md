@@ -181,6 +181,53 @@ uv run python -m src.run_experiment --config experiments/config_baseline.yaml
 uv run jupyter lab notebooks/
 ```
 
+## Running Experiments
+
+The baseline experiment runs with progress bars showing:
+- Overall replicate progress (e.g., "Replicate 1/5")
+- Individual step progress: synthetic patient generation, MOTIF calibration, UDE training
+- Training loss updates every 10 epochs
+
+```bash
+# Run with progress output (default)
+uv run python -m src.run_experiment --config experiments/config_baseline.yaml
+
+# Suppress progress output (quiet mode)
+uv run python -m src.run_experiment --config experiments/config_baseline.yaml --quiet
+```
+
+**Experiment Duration:** With default config (5 replicates, ~500 patients, 500 UDE epochs):
+- Synthetic patient generation: ~5-10 sec per replicate
+- MOTIF calibration: ~30-60 sec per patient (bottleneck)
+- UDE training: ~5-15 min per replicate (most time-consuming)
+- **Total:** ~1-2 hours for 5 replicates (GPU-accelerated PyTorch if available)
+
+Results are saved to `results/` with timestamp-based subdirectories. Each replicate saves:
+- `cohort.pkl` — synthetic patient data
+- `motif_results.pkl` — MOTIF pipeline outputs
+- `ude_results.pkl` — UDE + SINDy outputs
+- `metrics.json` — aggregated recovery and classification metrics
+
+## Cleaning Up Between Runs
+
+**If you abort a run:** No cleanup needed. Incomplete output directories are safe to leave (each run creates a new timestamped directory). You can delete old result directories if disk space is a concern:
+
+```bash
+# View generated results
+ls results/
+
+# Delete old results (optional)
+rm -rf results/experiment-name_YYYYMMDD_HHMMSS/
+```
+
+**Cache files:** PyTorch may cache compiled code in `__pycache__/` directories. These are safe to delete:
+
+```bash
+# Clean Python cache (safe to do anytime)
+find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null
+find . -type f -name "*.pyc" -delete
+```
+
 ---
 
 ## Implementation Priority Order for Claude Code
