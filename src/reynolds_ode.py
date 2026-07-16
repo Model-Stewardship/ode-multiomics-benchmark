@@ -12,43 +12,52 @@ import matplotlib.pyplot as plt
 
 
 REYNOLDS_PARAMS = {
-    # Pathogen dynamics
-    'k_pg':    0.5,      # pathogen growth rate
+    # Pathogen (Eq. 9)
+    'k_pg':    0.6,      # pathogen growth rate (above bistability threshold 0.5137)
     'P_inf':   20.0,     # pathogen carrying capacity
-    'k_pm':    1.8,      # max pathogen clearance rate by N*
-    's_dm':    0.05,     # half-saturation of N* clearance of pathogen
-    'mu_p':    0.2,      # pathogen natural decay
+    'k_pm':    0.6,      # nonspecific M clearance coefficient
+    's_m':     0.005,    # M production rate (quasi-steady-state)
+    'mu_m':    0.002,    # M saturation constant
+    'k_mp':    0.01,     # pathogen effect on M
+    'k_pn':    1.8,      # N*-mediated clearance rate
+    'c_1':     0.28,     # anti-inflammatory inhibition threshold
 
-    # Early pro-inflammatory mediator (N*)
-    's_nr':    0.08,     # max production rate of N*
-    'epsilon_nr': 0.32,  # anti-inflammatory suppression threshold (CA)
-    's_nm':    0.1,      # half-saturation pathogen activation of N*
-    's_nd':    0.1,      # half-saturation damage activation of N*
-    'N_inf':   0.6,      # N* carrying capacity (max activation)
-    'mu_nr':   0.12,     # N* decay rate
+    # Early pro-inflammatory mediator N* (Eq. 10)
+    's_nr':    0.08,     # max N* production rate
+    'k_nn':    0.01,     # N* self-activation (positive feedback — essential for bistability)
+    'k_np':    0.1,      # pathogen activation of N*
+    'k_nd':    0.02,     # damage activation of N*
+    'mu_nr':   0.12,     # Michaelis-Menten constant for N* production
+    'mu_n':    0.05,     # activated N* decay rate
 
-    # Late pro-inflammatory / DAMP mediator (D)
-    'k_dn':    0.02,     # N*-driven DAMP production
-    'k_df':    0.02,     # tissue-damage-driven DAMP production
-    'mu_d':    0.05,     # D decay rate
+    # Late pro-inflammatory / DAMP mediator D (Eq. 11)
+    'k_dn':    0.35,     # max DAMP production rate (from paper Table 1)
+    'x_dn':    0.06,     # Hill function half-saturation for damage production
+    'mu_d':    0.02,     # D decay rate
 
-    # Anti-inflammatory mediator (CA)
-    's_c':     0.04,     # max CA production rate
-    's_cn':    0.08,     # half-saturation of N* driving CA
+    # Anti-inflammatory mediator CA (Eq. 12)
+    's_c':     0.0125,   # constitutive CA source (from paper)
+    'k_cn':    0.04,     # max CA production coefficient
+    'k_cnd':   48.0,     # D effectiveness relative to N* (from paper)
     'mu_c':    0.1,      # CA decay rate
 
-    # Tissue damage
-    'k_f':     0.01,     # N*-driven tissue damage rate
-    'k_fh':    0.12,     # tissue repair rate (health-dependent)
+    # Tissue damage fraction (phenomenological extension, not in paper)
+    'k_f':     0.1,      # N*-driven damage rate
+    'k_fh':    0.1,      # tissue repair rate (equal to k_f → equilibrium f* = N*)
 }
 
 
 def reynolds_ode(t: float, x: np.ndarray, params: Dict) -> np.ndarray:
     """
-    Reynolds 2006 ODE system.
+    Reynolds 2006 ODE system (Eqs. 9–12 with phenomenological f dynamics).
 
     State vector: x = [P, N*, D, CA, f]
     (h = 1 - f is derived algebraically, not integrated)
+
+    References:
+        Reynolds A, Rubin J, Clermont G, Day J, Vodovotz Y, Ermentrout GB.
+        "A reduced mathematical model of the acute inflammatory response."
+        J Theor Biol 242(1):220–36. (2006)
 
     Args:
         t: Current time (hours)
@@ -60,28 +69,38 @@ def reynolds_ode(t: float, x: np.ndarray, params: Dict) -> np.ndarray:
     """
     P, Nstar, D, CA, f = x
     p = params
-
-    # Derived quantity
     h = 1.0 - f
 
-    # dP/dt: Pathogen dynamics
+    # Shared anti-inflammatory inhibition function f(V) = V / (1 + (CA/c_1)²)
+    def anti_inhib(V):
+        return V / (1.0 + (CA / p['c_1'])**2)
+
+    # dP/dt (Eq. 9): Pathogen dynamics
+    # Growth - nonspecific M clearance - N*-mediated clearance
+    M_ss = p['s_m'] / (p['mu_m'] + p['k_mp'] * P)  # quasi-steady-state M
     dP = (p['k_pg'] * P * (1 - P / p['P_inf'])
-          - p['k_pm'] * (Nstar / (p['s_dm'] + Nstar)) * P
-          - p['mu_p'] * P)
+          - p['k_pm'] * M_ss * P
+          - p['k_pn'] * anti_inhib(Nstar) * P)
 
-    # dN*/dt: Early pro-inflammatory mediator
-    dNstar = (p['s_nr'] / (1 + (CA / p['epsilon_nr'])**2)
-              * (P / (p['s_nm'] + P) + D / (p['s_nd'] + D))
-              * (1 - Nstar / p['N_inf'])
-              - p['mu_nr'] * Nstar)
+    # dN*/dt (Eq. 10): Early pro-inflammatory mediator activation
+    # R = stimulus (P, D, and POSITIVE FEEDBACK k_nn·N* — critical for bistability)
+    R = p['k_nn'] * Nstar + p['k_np'] * P + p['k_nd'] * D
+    fR = anti_inhib(R)
+    dNstar = p['s_nr'] * fR / (p['mu_nr'] + fR) - p['mu_n'] * Nstar
 
-    # dD/dt: Late pro-inflammatory / DAMP mediator
-    dD = p['k_dn'] * Nstar + p['k_df'] * f - p['mu_d'] * D
+    # dD/dt (Eq. 11): DAMP production via 6th-order Hill function
+    # Hill function f_s(V) = V⁶/(x_dn⁶ + V⁶) provides switch-like behavior
+    fNstar_D = anti_inhib(Nstar)
+    hill6 = fNstar_D**6 / (p['x_dn']**6 + fNstar_D**6)
+    dD = p['k_dn'] * hill6 - p['mu_d'] * D
 
-    # dCA/dt: Anti-inflammatory mediator
-    dCA = p['s_c'] * (Nstar**2) / (p['s_cn']**2 + Nstar**2) - p['mu_c'] * CA
+    # dCA/dt (Eq. 12): Anti-inflammatory response
+    # Both N* and D (via k_cnd=48) drive CA; constitutive source s_c
+    stim = anti_inhib(Nstar + p['k_cnd'] * D)
+    dCA = p['s_c'] + p['k_cn'] * stim / (1.0 + stim) - p['mu_c'] * CA
 
-    # df/dt: Tissue damage fraction
+    # df/dt: Tissue damage fraction (phenomenological extension)
+    # With k_f = k_fh, equilibrium is f* = Nstar, so f directly tracks inflammation
     df = p['k_f'] * Nstar * (1 - f) - p['k_fh'] * h * f
 
     return np.array([dP, dNstar, dD, dCA, df])
