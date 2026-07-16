@@ -320,8 +320,8 @@ def train_ude(
 
         scheduler.step(avg_loss)
 
-        if verbose and (epoch + 1) % 50 == 0:
-            pbar.set_postfix({'loss': f'{avg_loss:.4f}'})
+        if verbose and (epoch + 1) % 10 == 0:
+            pbar.set_postfix({'loss': f'{avg_loss:.4f}', 'epoch': f'{epoch + 1}/{n_epochs}'})
 
     if verbose:
         pbar.close()
@@ -465,7 +465,10 @@ def run_ude_pipeline(
 
     # Step 2: Train UDE
     if verbose:
-        print("  Step 2: Training UDE...")
+        n_epochs = config.get('n_epochs', 500)
+        batch_size = config.get('batch_size', 16)
+        lr = config.get('lr', 1e-3)
+        print(f"  Step 2: Training UDE (epochs={n_epochs}, batch_size={batch_size}, lr={lr})...")
 
     trained_model, history = train_ude(
         cohort,

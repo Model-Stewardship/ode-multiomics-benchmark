@@ -216,16 +216,16 @@ def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(description='Run ODE-Multiomics benchmark experiment')
     parser.add_argument('--config', required=True, help='Path to YAML config file')
-    parser.add_argument('--verbose', action='store_true', help='Print progress messages')
+    parser.add_argument('--quiet', action='store_true', help='Suppress progress messages (default: show progress)')
 
     args = parser.parse_args()
 
     # Load config
     config = ExperimentConfig.from_yaml(args.config)
 
-    # Run experiment
+    # Run experiment (verbose by default)
     try:
-        output_dir = run_experiment(config, verbose=args.verbose)
+        output_dir = run_experiment(config, verbose=not args.quiet)
         print(f"Experiment complete: {output_dir}")
         return 0
     except Exception as e:
