@@ -1,12 +1,13 @@
 # Papers Directory
 
-Place PDF files here. They are referenced by Claude Code for biological and
-methodological context during implementation.
+Reference PDFs for the ODE–Multiomics Benchmark project. These papers provide
+the biological, mathematical, and methodological foundation for both MOTIF and
+UDE pipelines. All papers listed below are present in this directory.
 
-## Required Papers
+## Core Papers (Required for Understanding)
 
 ### 1. Reynolds 2006 — The Benchmark Model
-**File:** `Reynolds_2006_JTheorBiol.pdf`
+**File:** `Reynolds 2006 - A reduced mathematical model of the acute inflammatory response.pdf`
 **Citation:** Reynolds A, Rubin J, Clermont G, Day J, Vodovotz Y, Ermentrout GB.
 "A reduced mathematical model of the acute inflammatory response: I. Derivation
 of model and analysis of anti-inflammation."
@@ -20,7 +21,7 @@ Claude Code must read the parameter table to implement `REYNOLDS_PARAMS` correct
 ---
 
 ### 2. Hoffmann 2002 — The Canonical Systems Biology Precedent
-**File:** `Hoffmann_2002_Science.pdf`
+**File:** `Hoffmann 2002 - The IkB-NF-kB signaling module Temporal control and selective gene activation.pdf`
 **Citation:** Hoffmann A, Levchenko A, Scott ML, Baltimore D.
 "The IκB–NF-κB signaling module: temporal control and selective gene activation."
 *Science* 298(5596):1241–5. (2002)
@@ -35,7 +36,7 @@ is more tractable for implementation.
 ---
 
 ### 3. Brunton 2016 — SINDy Method
-**File:** `Brunton_2016_Science_SINDy.pdf`
+**File:** `Brunton 2016 - Discovering governing equations from data by sparse identification of nonlinear dynamical systems.pdf`
 **Citation:** Brunton SL, Proctor JL, Kutz JN.
 "Discovering governing equations from data by sparse identification of
 nonlinear dynamical systems."
@@ -49,7 +50,7 @@ SINDy extraction step in `src/ude_pipeline.py`.
 ---
 
 ### 4. Rackauckas 2021 — Universal Differential Equations
-**File:** `Rackauckas_2021_UDE.pdf`
+**File:** `Rackauckas 2021 - Universal differential equations for scientific machine learning.pdf`
 **Citation:** Rackauckas C, Ma Y, Martensen J, Warner C, Zubov K, Supekar R,
 Skinner D, Ramadhan A, Edelman A.
 "Universal differential equations for scientific machine learning."
@@ -62,7 +63,7 @@ end-to-end using automatic differentiation through ODE solvers.
 ---
 
 ### 5. Funk 2026 — MOTIF Conceptual Framework
-**File:** `Funk_2026_JPAD.pdf`
+**File:** `Funk 2026 - Mining the gaps Deciphering Alzheimer's biology through AI-driven reconciliation.pdf`
 **Citation:** Funk CC, Paterson T, Bangs A, Cannon DM, Savage G, Ringger E, Hood L.
 "Mining the gaps: Deciphering Alzheimer's biology through AI-driven reconciliation."
 *Journal of Prevention of Alzheimer's Disease* 13(2026):100402.
@@ -99,6 +100,38 @@ models of quadratic nonlinear dynamics." *Physical Review Fluids* 6:094401 (2021
 **DOI:** 10.1098/rspa.2021.0904
 **Why:** Documents the `pysindy` Python library used in the UDE pipeline.
 See also: https://pysindy.readthedocs.io/
+
+---
+
+## Additional References (AAIC 2025 Posters)
+
+### Bangs 2025 — Clinical Digital Twin Decision Support
+
+**File:** `Bangs 2025 - Developing a digital twin clinical decision support tool.pdf`
+
+**Citation:** Bangs A et al.
+"Developing a digital twin clinical decision support tool."
+*AAIC 2025* (Alzheimer's Association International Conference, conference poster). Fulcrum Neuroscience. 2025.
+
+**Why:** Describes the clinical application layer built on top of the Fulcrum/Hood BHN digital twin
+platform. Shows how ODE-based mechanistic models translate into personalized risk assessment and
+treatment recommendation tools. The downstream use case that validates the MOTIF framework.
+
+---
+
+### Paterson 2025 — MOTIF Framework (Fulcrum/Hood Lab)
+
+**File:** `Paterson 2025 - From digital twins to multiomic inference A systems-level framework.pdf`
+
+**Citation:** Paterson T, Rohrs J, Hohman TJ, Mapstone M, Meikle PJ, Kaddurah-Daouk R, Levey AI,
+Hood L; Alzheimer's Disease Neuroimaging Initiative; Alzheimer Disease Metabolomics Consortium;
+Funk CC. "From Digital Twins to Multiomic Inference: A Systems-Level Framework for Alzheimer's
+Disease Etiology." *AAIC 2025* (conference poster). 2025.
+
+**Why:** Directly presents the MOTIF (Multi-Omic Twin-Inferred Function) framework — the multi-omic
+twin-inferred function approach that pipeline 1 (MOTIF proxy expansion) implements and tests.
+Primary methodological reference alongside Funk 2026. Demonstrates application to real clinical
+proteomics and metabolomics data.
 
 ---
 

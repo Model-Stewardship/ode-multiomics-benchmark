@@ -82,13 +82,15 @@ ode-multiomics-benchmark/
 ├── TECHNICAL_SPEC.md                  ← Full mathematical and implementation spec
 ├── EXPERIMENT_DESIGN.md               ← Experimental design, evaluation metrics, figures
 │
-├── papers/                            ← Reference PDFs (add manually — see below)
-│   ├── Reynolds_2006_JTheorBiol.pdf
-│   ├── Hoffmann_2002_Science.pdf
-│   ├── Brunton_2016_Science_SINDy.pdf
-│   ├── Rackauckas_2021_UDE.pdf
-│   ├── Funk_2026_JPAD.pdf
-│   └── README_papers.md               ← DOIs and download instructions
+├── papers/                            ← Reference PDFs
+│   ├── Bangs 2025 - Developing a digital twin clinical decision support tool.pdf
+│   ├── Brunton 2016 - Discovering governing equations from data by sparse identification of nonlinear dynamical systems.pdf
+│   ├── Funk 2026 - Mining the gaps Deciphering Alzheimer's biology through AI-driven reconciliation.pdf
+│   ├── Hoffmann 2002 - The IkB-NF-kB signaling module Temporal control and selective gene activation.pdf
+│   ├── Paterson 2025 - From digital twins to multiomic inference A systems-level framework.pdf
+│   ├── Rackauckas 2021 - Universal differential equations for scientific machine learning.pdf
+│   ├── Reynolds 2006 - A reduced mathematical model of the acute inflammatory response.pdf
+│   └── README_papers.md               ← Citation details and usage notes
 │
 ├── src/
 │   ├── __init__.py
@@ -131,19 +133,21 @@ ode-multiomics-benchmark/
 
 ---
 
-## Papers to Add to `papers/`
+## Papers Reference
 
-Download these manually and place in `papers/`. DOIs and sources are in
-`papers/README_papers.md`. These are the primary references Claude Code
-needs to understand model equations and methodological context.
+All papers are present in `papers/`. For full citation details, DOIs, and usage notes,
+see `papers/README_papers.md`. These are the primary references needed to understand
+model equations and methodological context.
 
-| File | Reference | Where to get |
+| Paper | Type | Year |
 |---|---|---|
-| `Reynolds_2006_JTheorBiol.pdf` | Reynolds et al. 2006 | doi:10.1016/j.jtbi.2006.01.015 |
-| `Hoffmann_2002_Science.pdf` | Hoffmann et al. 2002 | doi:10.1126/science.1071914 |
-| `Brunton_2016_Science_SINDy.pdf` | Brunton, Proctor, Kutz 2016 | doi:10.1126/science.afd0755 |
-| `Rackauckas_2021_UDE.pdf` | Rackauckas et al. 2021 | arXiv:2001.04385 |
-| `Funk_2026_JPAD.pdf` | Funk et al. 2026 | doi:10.1016/j.tjpad.2025.100402 |
+| Reynolds 2006 | Journal article | 2006 |
+| Hoffmann 2002 | Journal article | 2002 |
+| Brunton 2016 | Journal article | 2016 |
+| Rackauckas 2021 | ArXiv preprint | 2021 |
+| Funk 2026 | Journal article | 2026 |
+| Bangs 2025 | Conference poster (AAIC) | 2025 |
+| Paterson 2025 | Conference poster (AAIC) | 2025 |
 
 ---
 
