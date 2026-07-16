@@ -153,9 +153,12 @@ model equations and methodological context.
 
 ## Quickstart
 
+**If starting fresh (clone from GitHub):**
+
 ```bash
-# 1. Clone / create project directory
-mkdir ode-multiomics-benchmark && cd ode-multiomics-benchmark
+# 1. Clone repository
+git clone https://github.com/Model-Stewardship/ode-multiomics-benchmark.git
+cd ode-multiomics-benchmark
 
 # 2. Create virtual environment and install dependencies
 uv sync --extra dev
@@ -164,6 +167,17 @@ uv sync --extra dev
 uv run python -m src.run_experiment --config experiments/config_baseline.yaml
 
 # 4. Launch notebooks
+uv run jupyter lab notebooks/
+```
+
+**If you already have the directory locally:**
+
+```bash
+# Just create the virtual environment and install dependencies
+uv sync --extra dev
+
+# Then run experiments or notebooks as above
+uv run python -m src.run_experiment --config experiments/config_baseline.yaml
 uv run jupyter lab notebooks/
 ```
 
