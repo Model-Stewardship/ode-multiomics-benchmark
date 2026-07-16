@@ -8,6 +8,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Tuple
 import numpy as np
+from tqdm import tqdm
 
 from src.experiment_utils import ExperimentConfig
 from src.synthetic_data import generate_cohort
@@ -29,7 +30,7 @@ def run_single_replicate(config: ExperimentConfig, replicate_id: int,
         Tuple of (cohort, motif_results, ude_results)
     """
     if verbose:
-        print(f"\n  Replicate {replicate_id + 1}/{config.n_replicates}...")
+        print(f"\n  • Generating synthetic cohort...")
 
     # Generate synthetic cohort
     seed = config.random_seed + replicate_id
@@ -40,16 +41,20 @@ def run_single_replicate(config: ExperimentConfig, replicate_id: int,
         N_chronic=base + (1 if remainder > 1 else 0),
         N_death=base,
         seed=seed,
-        verbose=False
+        verbose=verbose
     )
 
     # Run MOTIF pipeline
+    if verbose:
+        print(f"  • Running MOTIF pipeline...")
     motif_config = {
         'n_restarts': 3,
     }
     motif_results = run_motif_pipeline(cohort, config=motif_config, verbose=verbose)
 
     # Run UDE pipeline
+    if verbose:
+        print(f"  • Running UDE + SINDy pipeline...")
     ude_config = {
         'nn_hidden_dim': config.ude.hidden_dim,
         'n_epochs': config.ude.n_epochs,
@@ -61,6 +66,9 @@ def run_single_replicate(config: ExperimentConfig, replicate_id: int,
         'sindy_threshold': config.sindy.threshold,
     }
     ude_results = run_ude_pipeline(cohort, config=ude_config, verbose=verbose)
+
+    if verbose:
+        print(f"  ✓ Replicate complete")
 
     return cohort, motif_results, ude_results
 
@@ -163,10 +171,14 @@ def run_experiment(config: ExperimentConfig, verbose: bool = True) -> str:
     if verbose:
         print(f"Running experiment: {config.experiment_name}")
         print(f"Output directory: {output_dir}")
+        print(f"Number of replicates: {config.n_replicates}")
+        print(f"Patients per replicate: {config.n_patients}\n")
 
-    # Run replicates
+    # Run replicates with progress bar
     replicates = []
-    for rep_id in range(config.n_replicates):
+    pbar = tqdm(range(config.n_replicates), desc="Replicates", unit="rep", disable=not verbose)
+    for rep_id in pbar:
+        pbar.set_description(f"Replicate {rep_id + 1}/{config.n_replicates}")
         cohort, motif_res, ude_res = run_single_replicate(config, rep_id, verbose=verbose)
         replicates.append((cohort, motif_res, ude_res))
 
