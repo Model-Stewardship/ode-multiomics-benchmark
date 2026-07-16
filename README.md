@@ -157,18 +157,14 @@ model equations and methodological context.
 # 1. Clone / create project directory
 mkdir ode-multiomics-benchmark && cd ode-multiomics-benchmark
 
-# 2. Create environment
-conda env create -f environment.yml
-conda activate ode-multiomics
+# 2. Create virtual environment and install dependencies
+uv sync --extra dev
 
-# 3. Install package in dev mode
-pip install -e .
+# 3. Run baseline experiment
+uv run python -m src.run_experiment --config experiments/config_baseline.yaml
 
-# 4. Run baseline experiment
-python -m src.run_experiment --config experiments/config_baseline.yaml
-
-# 5. Launch notebooks
-jupyter lab notebooks/
+# 4. Launch notebooks
+uv run jupyter lab notebooks/
 ```
 
 ---
