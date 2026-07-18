@@ -141,7 +141,9 @@ def solve_reynolds(
         method=method,
         dense_output=True,
         events=None,
-        max_step=np.inf
+        rtol=1e-9,
+        atol=1e-11,
+        max_step=0.25
     )
 
     if not sol.success:
@@ -160,22 +162,32 @@ def solve_reynolds(
     }
 
 
-def get_outcome(f_final: float) -> str:
+def get_outcome(sol: Dict, tol: float = 1e-3) -> str:
     """
-    Classify outcome based on final tissue damage f(t=72h).
+    Classify outcome based on paper's three attractors.
+
+    Uses final values of P, N*, D to match paper's classification:
+    - Health: P ≈ 0, N* ≈ 0, D ≈ 0
+    - Aseptic death: P ≈ 0, but N* > 0 and/or D > 0
+    - Septic death: P > 0, N* > 0, D > 0
 
     Args:
-        f_final: Tissue damage fraction at t=72h
+        sol: Solution dict from solve_reynolds with keys 't', 'P', 'Nstar', 'D', 'CA', 'f', 'h'
+        tol: Threshold to distinguish zero from non-zero
 
     Returns:
         Outcome class: 'resolution', 'chronic', or 'death'
     """
-    if f_final < 0.1:
-        return 'resolution'
-    elif f_final < 0.5:
-        return 'chronic'
+    P_final = sol['P'][-1]
+    Nstar_final = sol['Nstar'][-1]
+    D_final = sol['D'][-1]
+
+    if P_final < tol and Nstar_final < tol and D_final < tol:
+        return 'resolution'        # health attractor
+    elif P_final < tol and (Nstar_final >= tol or D_final >= tol):
+        return 'chronic'           # aseptic death attractor
     else:
-        return 'death'
+        return 'death'             # septic death attractor (P > tol)
 
 
 def plot_phase_portrait(ax: Optional[plt.Axes] = None) -> plt.Axes:
@@ -210,7 +222,7 @@ def plot_phase_portrait(ax: Optional[plt.Axes] = None) -> plt.Axes:
             sol = solve_reynolds(REYNOLDS_PARAMS, x0, t_eval)
             f_final = sol['f'][-1]
             f_final_values.append(f_final)
-            outcomes.append(get_outcome(f_final))
+            outcomes.append(get_outcome(sol))
         except ValueError:
             f_final_values.append(np.nan)
             outcomes.append('unknown')
@@ -279,7 +291,7 @@ def plot_trajectories(
     }
 
     for sol in solutions:
-        outcome = get_outcome(sol['f'][-1])
+        outcome = get_outcome(sol)
         color = colors_outcome[outcome]
 
         for var in variables:
@@ -303,26 +315,44 @@ def plot_trajectories(
 
 
 if __name__ == '__main__':
-    # Test: Verify the three outcome trajectories
-    print("Testing Reynolds ODE with canonical initial pathogen loads...")
+    # Test: Reproduce Figure 5 canonical scenarios
+    print("Testing Reynolds ODE with paper's Figure 5 scenarios...\n")
 
-    test_P0s = {'resolution': 2.0, 'chronic': 7.0, 'death': 15.0}
+    # CA baseline at health equilibrium
+    ca_health = REYNOLDS_PARAMS['s_c'] / REYNOLDS_PARAMS['mu_c']  # 0.125
+
+    # Test scenarios from Figure 5: (kpg, P0) pairs
+    test_scenarios = {
+        'resolution': {'kpg': 0.3, 'P0': 1.0},
+        'chronic':    {'kpg': 0.3, 'P0': 1.5},
+        'death':      {'kpg': 0.6, 'P0': 1.0},
+    }
     test_solutions = {}
 
-    t_eval = np.linspace(0, 72, 1000)
+    # Integrate to 1000h for reliable outcome classification (paper converges slower)
+    t_eval = np.linspace(0, 1000, 4001)
 
-    for expected_outcome, P0 in test_P0s.items():
-        x0 = np.array([P0, 0.0, 0.0, 0.0, 0.0])
+    for expected_outcome, scenario in test_scenarios.items():
+        kpg = scenario['kpg']
+        P0 = scenario['P0']
+
+        # Set up parameters with scenario-specific kpg
+        params = REYNOLDS_PARAMS.copy()
+        params['k_pg'] = kpg
+
+        # Initial condition: [P0, N*=0, D=0, CA=health_baseline, f=0]
+        x0 = np.array([P0, 0.0, 0.0, ca_health, 0.0])
+
         try:
-            sol = solve_reynolds(REYNOLDS_PARAMS, x0, t_eval)
-            actual_outcome = get_outcome(sol['f'][-1])
+            sol = solve_reynolds(params, x0, t_eval)
+            actual_outcome = get_outcome(sol)
             test_solutions[expected_outcome] = sol
 
             status = "[PASS]" if actual_outcome == expected_outcome else "[FAIL]"
-            print(f"{status} P0={P0:5.1f} -> {actual_outcome:10s} (expected {expected_outcome})")
-            print(f"       f(72h)={sol['f'][-1]:.3f}, integration success={sol['success']}")
+            print(f"{status} kpg={kpg:.1f}, P0={P0:4.1f} -> {actual_outcome:12s} (expected {expected_outcome})")
+            print(f"       Final: P={sol['P'][-1]:.4f}, N*={sol['Nstar'][-1]:.4f}, D={sol['D'][-1]:.4f}")
         except Exception as e:
-            print(f"[FAIL] P0={P0:5.1f} -> ERROR: {e}")
+            print(f"[FAIL] kpg={kpg:.1f}, P0={P0:4.1f} -> ERROR: {e}")
 
     # Plot both figures
     print("\nGenerating plots...")

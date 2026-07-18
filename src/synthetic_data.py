@@ -20,11 +20,25 @@ except ImportError:
     from reynolds_ode import REYNOLDS_PARAMS, solve_reynolds, get_outcome
 
 
-# Cohort stratification: initial pathogen load ranges and counts
+# Cohort stratification: pathogen growth rate and initial load ranges
+# Based on Reynolds et al. 2006 Figure 5 outcomes
+# Note: health and chronic use kpg=0.3; death requires kpg>0.5137 for bistability
 COHORT_SPEC = {
-    'resolution': {'N': 200, 'P0_range': (0.5, 3.5)},
-    'chronic':    {'N': 150, 'P0_range': (4.0, 9.0)},
-    'death':      {'N': 150, 'P0_range': (11.0, 20.0)},
+    'resolution': {
+        'N': 200,
+        'kpg_range': (0.20, 0.35),    # pathogen growth rate (low)
+        'P0_range':  (0.3, 0.9),      # initial pathogen (below basin boundary ~1.0)
+    },
+    'chronic': {
+        'N': 150,
+        'kpg_range': (0.20, 0.35),    # same as resolution
+        'P0_range':  (1.2, 2.5),      # initial pathogen (above basin boundary ~1.0)
+    },
+    'death': {
+        'N': 150,
+        'kpg_range': (0.55, 0.85),    # high growth rate (tristable regime: >0.5137)
+        'P0_range':  (0.3, 1.3),      # initial pathogen (in septic-death basin)
+    },
 }
 
 # Observation timepoints (hours)
@@ -36,6 +50,7 @@ OBS_VARIABLES = ['Nstar', 'CA', 'f']
 
 def generate_patient(
     P0: float,
+    kpg: float = None,
     params_base: Dict = None,
     seed: int = None,
     obs_noise_sigma: float = 0.10,
@@ -46,6 +61,7 @@ def generate_patient(
 
     Args:
         P0: Initial pathogen load
+        kpg: Pathogen growth rate (if None, uses baseline)
         params_base: Baseline parameters (uses REYNOLDS_PARAMS if None)
         seed: Random seed for reproducibility
         obs_noise_sigma: Observation noise coefficient of variation
@@ -66,22 +82,31 @@ def generate_patient(
         log_noise = np.random.normal(0, param_noise_sigma)
         patient_params[key] = val * np.exp(log_noise)
 
-    # Initial conditions
-    x0 = np.array([P0, 0.0, 0.0, 0.0, 0.0])
+    # Override kpg if provided
+    if kpg is not None:
+        patient_params['k_pg'] = kpg
 
-    # Solve ODE at high resolution for ground truth
-    t_fine = np.linspace(0, 72, 1000)
+    # CA baseline at health equilibrium (from paper Figure 5 simulations)
+    ca_health = patient_params['s_c'] / patient_params['mu_c']
+
+    # Initial conditions (paper's Figure 5 initial conditions)
+    # [P0, N*=0, D=0, CA=baseline, f=0]
+    x0 = np.array([P0, 0.0, 0.0, ca_health, 0.0])
+
+    # Solve ODE to long time (1000h) for outcome classification
+    # Use high resolution for accurate classification
+    t_long = np.linspace(0, 1000, 4001)
     try:
-        sol_fine = solve_reynolds(patient_params, x0, t_fine, method='Radau')
+        sol_long = solve_reynolds(patient_params, x0, t_long, method='LSODA')
     except ValueError as e:
-        raise ValueError(f"ODE integration failed for P0={P0}: {e}")
+        raise ValueError(f"ODE integration failed for P0={P0}, kpg={kpg}: {e}")
 
-    # Determine outcome from ground truth
-    outcome = get_outcome(sol_fine['f'][-1])
+    # Determine outcome from long-time solution (matches paper's approach)
+    outcome = get_outcome(sol_long)
 
-    # Extract values at observation timepoints
-    t_obs = OBS_TIMEPOINTS.copy()
-    sol_obs = solve_reynolds(patient_params, x0, t_obs, method='Radau')
+    # Extract values at clinical observation timepoints (0-72h, paper's Figure 5 window)
+    t_obs = np.linspace(0, 72, 25)
+    sol_obs = solve_reynolds(patient_params, x0, t_obs, method='LSODA')
 
     # Add measurement noise to observations
     # Proportional Gaussian noise: observed = true * (1 + N(0, sigma))
@@ -102,9 +127,10 @@ def generate_patient(
     return {
         'id': None,  # Will be set by generate_cohort
         'P0': P0,
+        'kpg': patient_params['k_pg'],
         'outcome': outcome,
         'params': patient_params,
-        # Observed (noisy, 6 timepoints)
+        # Observed (noisy, 25 timepoints over 0-72h)
         'obs_Nstar': obs_Nstar,
         'obs_CA': obs_CA,
         'obs_f': obs_f,
@@ -113,9 +139,9 @@ def generate_patient(
         'true_P': true_P,
         'true_D': true_D,
         'true_h': true_h,
-        # Full high-resolution ground truth trajectory
-        'true_traj': sol_fine.copy(),  # Full solution dict
-        'true_t': sol_fine['t'],
+        # Full high-resolution ground truth trajectory (for long-time classification)
+        'true_traj_long': sol_long.copy(),  # Full solution dict up to 1000h
+        'true_t_long': sol_long['t'],
     }
 
 
@@ -149,25 +175,30 @@ def generate_cohort(
     patient_id = 0
 
     outcome_specs = [
-        ('resolution', N_resolution, COHORT_SPEC['resolution']['P0_range']),
-        ('chronic', N_chronic, COHORT_SPEC['chronic']['P0_range']),
-        ('death', N_death, COHORT_SPEC['death']['P0_range']),
+        ('resolution', N_resolution, COHORT_SPEC['resolution']),
+        ('chronic', N_chronic, COHORT_SPEC['chronic']),
+        ('death', N_death, COHORT_SPEC['death']),
     ]
 
-    for outcome_name, N, (P0_min, P0_max) in outcome_specs:
+    for outcome_name, N, spec in outcome_specs:
+        P0_min, P0_max = spec['P0_range']
+        kpg_min, kpg_max = spec['kpg_range']
+
         if verbose:
-            print(f"Generating {N} {outcome_name} patients (P0 ~ U({P0_min}, {P0_max}))...")
+            print(f"Generating {N} {outcome_name} patients (P0 ~ U({P0_min}, {P0_max}), kpg ~ U({kpg_min}, {kpg_max}))...")
 
         iterator = tqdm(range(N), disable=not verbose)
         for i in iterator:
-            # Sample P0 uniformly from outcome-specific range
+            # Sample P0 and kpg uniformly from outcome-specific ranges
             P0 = np.random.uniform(P0_min, P0_max)
+            kpg = np.random.uniform(kpg_min, kpg_max)
 
             # Generate patient with unique seed
             patient_seed = seed + patient_id
             try:
                 patient = generate_patient(
                     P0,
+                    kpg=kpg,
                     params_base=REYNOLDS_PARAMS.copy(),
                     seed=patient_seed,
                     obs_noise_sigma=obs_noise_sigma,
