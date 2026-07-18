@@ -110,7 +110,11 @@ def solve_reynolds(
     params: Dict,
     x0: np.ndarray,
     t_eval: np.ndarray,
-    method: str = 'Radau'
+    method: str = 'LSODA',
+    rtol: float = 1e-9,
+    atol: float = 1e-11,
+    max_step: float = 0.25,
+    dense_output: bool = False,
 ) -> Dict:
     """
     Solve the Reynolds ODE system.
@@ -119,7 +123,11 @@ def solve_reynolds(
         params: Parameters dict
         x0: Initial conditions [P0, N*0, D0, CA0, f0]
         t_eval: Time points at which to evaluate solution
-        method: ODE solver method ('Radau' for stiffness, 'RK45' for speed)
+        method: ODE solver method ('LSODA' for adaptive, 'RK45' for speed, 'Radau' for stiffness)
+        rtol: Relative tolerance (default 1e-9 for high precision; use 1e-4 to 1e-6 for speed)
+        atol: Absolute tolerance (default 1e-11 for high precision; use 1e-6 to 1e-8 for speed)
+        max_step: Maximum internal step size (default 0.25 hours; use 2.0 for speed)
+        dense_output: Whether to compute dense interpolation (default False; saves memory/time)
 
     Returns:
         Dictionary with keys:
@@ -132,18 +140,18 @@ def solve_reynolds(
     def system(t, x):
         return reynolds_ode(t, x, params)
 
-    # Dense output for high-resolution evaluation
+    # Solve with specified tolerances
     sol = solve_ivp(
         system,
         t_span=(t_eval[0], t_eval[-1]),
         y0=x0,
         t_eval=t_eval,
         method=method,
-        dense_output=True,
+        dense_output=dense_output,
         events=None,
-        rtol=1e-9,
-        atol=1e-11,
-        max_step=0.25
+        rtol=rtol,
+        atol=atol,
+        max_step=max_step,
     )
 
     if not sol.success:

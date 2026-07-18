@@ -11,6 +11,7 @@ from scipy.stats import spearmanr
 from scipy.integrate import trapezoid
 import warnings
 from tqdm import tqdm
+from joblib import Parallel, delayed
 
 # Try sklearn imports with fallback
 try:
@@ -101,9 +102,13 @@ def calibrate_patient(
                 params_fit = {**params_init}
                 params_fit.update(calib_params)
 
-                # Simulate
+                # Simulate with fast tolerances (optimization loop doesn't need tight precision)
                 x0_fit = np.array([P0_fit, 0.0, 0.0, 0.0, 0.0])
-                sol = solve_reynolds(params_fit, x0_fit, obs_timepoints, method='Radau')
+                sol = solve_reynolds(
+                    params_fit, x0_fit, obs_timepoints,
+                    method='RK45',
+                    rtol=1e-4, atol=1e-6, max_step=2.0, dense_output=False
+                )
 
                 # Residuals
                 res_Nstar = (obs_Nstar - sol['Nstar']) ** 2
@@ -149,9 +154,13 @@ def calibrate_patient(
     fitted_params = {**params_init}
     fitted_params.update(fitted_calib)
 
-    # Compute fit quality (R²)
+    # Compute fit quality (R²) with moderate precision (final evaluation)
     x0_fit = np.array([fitted_P0, 0.0, 0.0, 0.0, 0.0])
-    sol_fit = solve_reynolds(fitted_params, x0_fit, obs_timepoints, method='Radau')
+    sol_fit = solve_reynolds(
+        fitted_params, x0_fit, obs_timepoints,
+        method='LSODA',
+        rtol=1e-8, atol=1e-10, max_step=0.5, dense_output=False
+    )
 
     # R² for combined observed variables
     obs_all = np.concatenate([patient['obs_Nstar'], patient['obs_CA'], patient['obs_f']])
@@ -185,10 +194,14 @@ def generate_motif_proxies(
     if t_eval is None:
         t_eval = np.linspace(0, 72, 200)
 
-    # Simulate with fitted parameters
+    # Simulate with fitted parameters (fast tolerances OK for proxy generation)
     x0 = np.array([fitted_P0, 0.0, 0.0, 0.0, 0.0])
     try:
-        sol = solve_reynolds(fitted_params, x0, t_eval, method='Radau')
+        sol = solve_reynolds(
+            fitted_params, x0, t_eval,
+            method='RK45',
+            rtol=1e-4, atol=1e-6, max_step=2.0, dense_output=False
+        )
     except Exception:
         return {}
 
@@ -486,28 +499,42 @@ def run_motif_pipeline(
     if verbose:
         print(f"Running MOTIF pipeline on {len(cohort)} patients...")
 
-    # Step 1: Calibration
+    # Step 1: Calibration (parallelized across all available cores)
     if verbose:
         print("  Step 1: Parameter calibration...")
 
-    calibrated_patients = []
-    for idx, patient in enumerate(tqdm(cohort, disable=not verbose)):
+    def calibrate_one_patient(idx_patient_tuple):
+        """Helper function for parallel calibration."""
+        idx, patient = idx_patient_tuple
         try:
             fitted_params, fitted_P0, fit_quality = calibrate_patient(
                 patient,
                 params_init=REYNOLDS_PARAMS.copy(),
-                n_restarts=config.get('n_calibration_restarts', 3),
+                n_restarts=config.get('n_restarts', 1),  # Default to 1 restart (fast)
                 verbose=False,
             )
-
             patient['fitted_params'] = fitted_params
             patient['fitted_P0'] = fitted_P0
             patient['fit_quality'] = fit_quality
-
-            calibrated_patients.append(patient)
+            return patient
         except Exception as e:
             if verbose:
                 print(f"    Patient {idx} calibration failed: {e}")
+            return None
+
+    # Run calibration in parallel using thread pool (lower overhead than processes)
+    results_list = Parallel(n_jobs=-1, prefer='threads')(
+        delayed(calibrate_one_patient)((idx, patient))
+        for idx, patient in tqdm(
+            enumerate(cohort),
+            total=len(cohort),
+            desc='Calibrating patients',
+            disable=not verbose
+        )
+    )
+
+    # Filter out failed calibrations
+    calibrated_patients = [p for p in results_list if p is not None]
 
     results['n_calibrated'] = len(calibrated_patients)
 
