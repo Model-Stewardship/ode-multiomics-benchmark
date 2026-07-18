@@ -32,7 +32,8 @@ warnings.filterwarnings('ignore')
 
 
 # Parameters to optimize during calibration
-CALIBRATION_PARAMS = ['k_pg', 'mu_p', 's_nr', 's_c']
+# Removed mu_p: pathogen decay is implicit in logistic growth (paper doesn't have explicit mu_p term)
+CALIBRATION_PARAMS = ['k_pg', 's_nr', 's_c']
 
 # Parameters to hold fixed
 FIXED_PARAMS = set(REYNOLDS_PARAMS.keys()) - set(CALIBRATION_PARAMS)
@@ -48,7 +49,7 @@ def calibrate_patient(
     """
     Calibrate ODE parameters to a single patient's observed data.
 
-    Optimizes a subset of parameters (k_pg, mu_p, s_nr, s_c) + P0
+    Optimizes a subset of parameters (k_pg, s_nr, s_c) + P0
     using L-BFGS-B to fit observed N*, CA, f trajectories.
 
     Args:

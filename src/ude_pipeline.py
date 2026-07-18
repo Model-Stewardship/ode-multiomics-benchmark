@@ -107,7 +107,11 @@ def ude_system(
     # Derived quantity
     h = 1.0 - f
 
-    # Observed state fed to neural network
+    # Shared anti-inflammatory inhibition function f(V) = V / (1 + (CA/c_1)^2)
+    def anti_inhib(V):
+        return V / (1.0 + (CA / p['c_1'])**2)
+
+    # Observed state fed to neural network (learn pathogen clearance)
     z = torch.stack([Nstar, CA, f], dim=-1)
     # Ensure z has batch dimension for NN
     if z.dim() == 1:
@@ -116,24 +120,28 @@ def ude_system(
     # Squeeze all dimensions except the last to get scalar
     nn_clearance = nn_clearance.squeeze()
 
-    # dP/dt: Pathogen dynamics with learned clearance
+    # dP/dt (Eq. 9): Pathogen dynamics with learned clearance
+    # Replace nonspecific M term with learned neural network
+    M_ss = p['s_m'] / (p['mu_m'] + p['k_mp'] * P)
     dP = (p['k_pg'] * P * (1 - P / p['P_inf'])
-          - nn_clearance * P  # Learned term replaces mechanistic clearance
-          - p['mu_p'] * P)
+          - p['k_pm'] * M_ss * P  # Mechanistic nonspecific clearance
+          - nn_clearance * P)     # Learn pathogen clearance by N*
 
-    # dN*/dt: Known early pro-inflammatory mediator dynamics
-    dNstar = (p['s_nr'] / (1 + (CA / p['epsilon_nr'])**2)
-              * (P / (p['s_nm'] + P) + D / (p['s_nd'] + D))
-              * (1 - Nstar / p['N_inf'])
-              - p['mu_nr'] * Nstar)
+    # dN*/dt (Eq. 10): Early pro-inflammatory mediator (KNOWN dynamics)
+    R = p['k_nn'] * Nstar + p['k_np'] * P + p['k_nd'] * D
+    fR = anti_inhib(R)
+    dNstar = p['s_nr'] * fR / (p['mu_nr'] + fR) - p['mu_n'] * Nstar
 
-    # dD/dt: Known late pro-inflammatory mediator dynamics
-    dD = p['k_dn'] * Nstar + p['k_df'] * f - p['mu_d'] * D
+    # dD/dt (Eq. 11): DAMP via 6th-order Hill (KNOWN dynamics)
+    fNstar_D = anti_inhib(Nstar)
+    hill6 = fNstar_D**6 / (p['x_dn']**6 + fNstar_D**6)
+    dD = p['k_dn'] * hill6 - p['mu_d'] * D
 
-    # dCA/dt: Known anti-inflammatory mediator dynamics
-    dCA = p['s_c'] * (Nstar**2) / (p['s_cn']**2 + Nstar**2) - p['mu_c'] * CA
+    # dCA/dt (Eq. 12): Anti-inflammatory (KNOWN dynamics)
+    stim = anti_inhib(Nstar + p['k_cnd'] * D)
+    dCA = p['s_c'] + p['k_cn'] * stim / (1.0 + stim) - p['mu_c'] * CA
 
-    # df/dt: Known tissue damage dynamics
+    # df/dt: Tissue damage dynamics (phenomenological)
     df = p['k_f'] * Nstar * (1 - f) - p['k_fh'] * h * f
 
     # Ensure all have same shape for stacking
