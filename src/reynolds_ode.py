@@ -322,6 +322,61 @@ def plot_trajectories(
     return ax
 
 
+def plot_state_variables(solutions: list, output_dir: str = '.') -> None:
+    """
+    Generate four separate plots (one per state variable) matching chatgpt_implementation style.
+
+    Each plot shows all three Figure 5 scenarios overlaid for easy variable-by-variable comparison.
+
+    Args:
+        solutions: List of solution dicts from solve_reynolds
+        output_dir: Directory to save plots (default current directory)
+    """
+    colors_outcome = {
+        'resolution': '#2ECC71',
+        'chronic': '#F39C12',
+        'death': '#E74C3C',
+    }
+
+    # Define plots: variable name, y-axis label, filename
+    plot_specs = [
+        ('P', 'Pathogen Level', 'reynolds_2006_pathogen.png'),
+        ('Nstar', 'Activated Phagocytes (N*)', 'reynolds_2006_phagocytes.png'),
+        ('D', 'Tissue Damage', 'reynolds_2006_damage.png'),
+        ('CA', 'Anti-inflammatory Mediator (CA)', 'reynolds_2006_anti_inflammatory.png'),
+    ]
+
+    for var_key, y_label, filename in plot_specs:
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        for sol in solutions:
+            outcome = get_outcome(sol)
+            color = colors_outcome[outcome]
+
+            ax.plot(
+                sol['t'],
+                sol[var_key],
+                color=color,
+                linewidth=2.5,
+                label=outcome.capitalize(),
+                alpha=0.85
+            )
+
+        ax.set_xlabel('Time (hours)', fontsize=12)
+        ax.set_ylabel(y_label, fontsize=12)
+        ax.set_title(f'{y_label} Trajectories (Figure 5 Scenarios)', fontsize=14, fontweight='bold')
+        ax.legend(loc='best', fontsize=11)
+        ax.grid(True, alpha=0.3)
+        ax.set_xlim(0, 200)
+
+        filepath = f'{output_dir}/{filename}' if output_dir != '.' else filename
+        plt.tight_layout()
+        plt.savefig(filepath, dpi=150, bbox_inches='tight')
+        plt.close()
+
+        print(f"[PASS] Saved plot: {filepath}")
+
+
 if __name__ == '__main__':
     # Test: Reproduce Figure 5 canonical scenarios
     print("Testing Reynolds ODE with paper's Figure 5 scenarios...\n")
@@ -362,8 +417,8 @@ if __name__ == '__main__':
         except Exception as e:
             print(f"[FAIL] kpg={kpg:.1f}, P0={P0:4.1f} -> ERROR: {e}")
 
-    # Plot both figures
-    print("\nGenerating plots...")
+    # Plot both figures for development/testing
+    print("\nGenerating development test plots...")
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
     plot_phase_portrait(axes[0])
@@ -376,4 +431,9 @@ if __name__ == '__main__':
     plt.tight_layout()
     plt.savefig('reynolds_ode_test.png', dpi=150, bbox_inches='tight')
     print("[PASS] Saved test plot: reynolds_ode_test.png")
+
+    # Generate publication-style plots (matching chatgpt_implementation)
+    print("\nGenerating publication-style state-variable plots...")
+    plot_state_variables(list(test_solutions.values()), output_dir='.')
+
     print("\nStep 2: Reynolds ODE implementation complete.")

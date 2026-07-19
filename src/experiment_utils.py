@@ -36,6 +36,15 @@ class SINDyConfig:
     threshold: float = 0.05
 
 @dataclass
+class MOTIFConfig:
+    """MOTIF pipeline hyperparameters.
+
+    Attributes:
+        n_restarts: Number of optimization restarts for parameter calibration (default: 1)
+    """
+    n_restarts: int = 1
+
+@dataclass
 class ExperimentConfig:
     """Complete experiment configuration loaded from YAML.
 
@@ -49,6 +58,7 @@ class ExperimentConfig:
         random_seed: Random seed for reproducibility (default: 42)
         ude: UDE pipeline configuration
         sindy: SINDy regression configuration
+        motif: MOTIF pipeline configuration
         output_dir: Directory for experiment results (default: 'results')
     """
     experiment_name: str
@@ -60,6 +70,7 @@ class ExperimentConfig:
     random_seed: int = 42
     ude: UDEConfig = field(default_factory=UDEConfig)
     sindy: SINDyConfig = field(default_factory=SINDyConfig)
+    motif: MOTIFConfig = field(default_factory=MOTIFConfig)
     output_dir: str = 'results'
 
     @classmethod
@@ -93,11 +104,13 @@ class ExperimentConfig:
 
         ude_data = data.pop('ude', {})
         sindy_data = data.pop('sindy', {})
+        motif_data = data.pop('motif', {})
 
         try:
             config = cls(**data)
             config.ude = UDEConfig(**ude_data)
             config.sindy = SINDyConfig(**sindy_data)
+            config.motif = MOTIFConfig(**motif_data)
         except TypeError as e:
             raise ValueError(f"Invalid configuration parameters: {e}") from e
 

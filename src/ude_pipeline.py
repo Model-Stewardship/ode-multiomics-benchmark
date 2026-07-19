@@ -388,15 +388,15 @@ def extract_sindy_equation(
 
     # SINDy fitting
     try:
-        feature_names = ['Nstar', 'CA', 'f']
         lib = ps.PolynomialLibrary(degree=sindy_config.get('degree', 2), include_interaction=True)
 
         sindy_model = ps.SINDy(
             optimizer=ps.STLSQ(threshold=sindy_config.get('threshold', 0.05)),
             feature_library=lib,
-            feature_names=feature_names,
         )
-        sindy_model.fit(state_grid, x_dot=nn_outputs)
+        # Create dummy time vector for grid-based fitting (SINDy requires t parameter)
+        t_dummy = np.arange(len(state_grid))
+        sindy_model.fit(state_grid, t=t_dummy, x_dot=nn_outputs)
 
         if verbose:
             print("\nSINDy Recovered Equation:")

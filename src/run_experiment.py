@@ -30,7 +30,7 @@ def run_single_replicate(config: ExperimentConfig, replicate_id: int,
         Tuple of (cohort, motif_results, ude_results)
     """
     if verbose:
-        print(f"\n  • Generating synthetic cohort...")
+        print(f"\n  > Generating synthetic cohort...")
 
     # Generate synthetic cohort
     seed = config.random_seed + replicate_id
@@ -46,15 +46,15 @@ def run_single_replicate(config: ExperimentConfig, replicate_id: int,
 
     # Run MOTIF pipeline
     if verbose:
-        print(f"  • Running MOTIF pipeline...")
+        print(f"  > Running MOTIF pipeline...")
     motif_config = {
-        'n_restarts': 3,
+        'n_restarts': config.motif.n_restarts,
     }
     motif_results = run_motif_pipeline(cohort, config=motif_config, verbose=verbose)
 
     # Run UDE pipeline
     if verbose:
-        print(f"  • Running UDE + SINDy pipeline...")
+        print(f"  > Running UDE + SINDy pipeline...")
     ude_config = {
         'nn_hidden_dim': config.ude.hidden_dim,
         'n_epochs': config.ude.n_epochs,
@@ -68,7 +68,7 @@ def run_single_replicate(config: ExperimentConfig, replicate_id: int,
     ude_results = run_ude_pipeline(cohort, config=ude_config, verbose=verbose)
 
     if verbose:
-        print(f"  ✓ Replicate complete")
+        print(f"  [OK] Replicate complete")
 
     return cohort, motif_results, ude_results
 
