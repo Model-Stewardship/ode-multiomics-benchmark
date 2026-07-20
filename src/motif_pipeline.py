@@ -11,6 +11,7 @@ from scipy.stats import spearmanr
 from scipy.integrate import trapezoid
 import warnings
 from tqdm import tqdm
+import time
 
 # Try sklearn imports with fallback
 try:
@@ -102,11 +103,13 @@ def calibrate_patient(
                 params_fit.update(calib_params)
 
                 # Simulate with fast tolerances (optimization loop doesn't need tight precision)
+                # Use LSODA instead of RK45: LSODA auto-detects stiffness and switches to BDF
+                # for implicit solve, avoiding the micro-step trap near bistability boundaries
                 x0_fit = np.array([P0_fit, 0.0, 0.0, 0.0, 0.0])
                 sol = solve_reynolds(
                     params_fit, x0_fit, obs_timepoints,
-                    method='RK45',
-                    rtol=1e-4, atol=1e-6, max_step=2.0, dense_output=False
+                    method='LSODA',
+                    rtol=1e-4, atol=1e-6, dense_output=False
                 )
 
                 # Residuals
@@ -124,19 +127,26 @@ def calibrate_patient(
             except Exception as e:
                 return 1e10
 
-        # Optimize
+        # Optimize with timeout callback to prevent hanging on pathological parameters
+        deadline = time.monotonic() + 60  # 60s max per patient per restart
+
+        def timeout_callback(xk):
+            if time.monotonic() > deadline:
+                raise StopIteration("calibration timeout")
+
         try:
             result = minimize(
                 residual_fn,
                 x0,
                 method='L-BFGS-B',
                 options={'ftol': 1e-6, 'maxiter': 500},
+                callback=timeout_callback,
             )
 
             if result.fun < best_residual:
                 best_residual = result.fun
                 best_result = result
-        except Exception as e:
+        except (Exception, StopIteration) as e:
             if verbose:
                 print(f"  Restart {restart} failed: {e}")
             continue
