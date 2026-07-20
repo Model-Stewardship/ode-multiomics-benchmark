@@ -11,7 +11,6 @@ from scipy.stats import spearmanr
 from scipy.integrate import trapezoid
 import warnings
 from tqdm import tqdm
-from joblib import Parallel, delayed
 
 # Try sklearn imports with fallback
 try:
@@ -522,16 +521,18 @@ def run_motif_pipeline(
                 print(f"    Patient {idx} calibration failed: {e}")
             return None
 
-    # Run calibration in parallel using thread pool (lower overhead than processes)
-    results_list = Parallel(n_jobs=-1, prefer='threads')(
-        delayed(calibrate_one_patient)((idx, patient))
-        for idx, patient in tqdm(
-            enumerate(cohort),
-            total=len(cohort),
-            desc='Calibrating patients',
-            disable=not verbose
-        )
-    )
+    # Run calibration serially to avoid scipy.optimize + OpenBLAS crashes on Windows
+    # with multiprocessing. joblib.Parallel with threads causes deadlock, processes cause segfaults.
+    # Serial is stable and acceptable for reasonable patient counts (< 1000).
+    results_list = []
+    for idx, patient in tqdm(
+        enumerate(cohort),
+        total=len(cohort),
+        desc='Calibrating patients',
+        disable=not verbose
+    ):
+        result = calibrate_one_patient((idx, patient))
+        results_list.append(result)
 
     # Filter out failed calibrations
     calibrated_patients = [p for p in results_list if p is not None]
