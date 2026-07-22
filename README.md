@@ -19,7 +19,7 @@ with known bistability and three clinically distinct outcome trajectories (resol
 chronic inflammation, death). Ground-truth parameters are known, making precise
 recovery evaluation possible.
 
-![MOTIF vs UDE: Mechanistic Inference vs Hybrid Learning](figures/schematics/FIg%201%20-%20ChatGPT%20Image%20Jul%2021%202026%2008_55_37%20PM%20-%20best.png)
+![MOTIF vs UDE: Mechanistic Inference vs Hybrid Learning](figures/schematics/fig-01-motif-ude-comparison.png)
 
 ---
 
@@ -72,7 +72,7 @@ Chang (this proposal / UDE approach)
 The benchmark directly compares methods 2 and 3 on shared synthetic data with
 known ground truth from method 1.
 
-![ODE-Multiomics Pipeline Overview: Three Parallel Analysis Streams](figures/schematics/Fig%202%20-%20ChatGPT%20Image%20Jul%2021%202026%2012_20_20%20PM%20-%20best.png)
+![ODE-Multiomics Pipeline Overview: Three Parallel Analysis Streams](figures/schematics/fig-02-pipeline-overview.png)
 
 ---
 
