@@ -16,6 +16,14 @@ from src.motif_pipeline import run_motif_pipeline
 from src.ude_pipeline import run_ude_pipeline
 
 
+def print_analysis_guidance():
+    """Print instructions for analyzing experiment results."""
+    print("\nTo visualize and analyze results:")
+    print("  1. Run: jupyter notebook")
+    print("  2. Open: notebooks/03-results-analysis.ipynb")
+    print("  3. The notebook will automatically load the most recent results")
+
+
 def run_single_replicate(config: ExperimentConfig, replicate_id: int,
                         verbose: bool = True) -> Tuple[Dict, Dict, Dict]:
     """
@@ -207,11 +215,7 @@ def run_experiment(config: ExperimentConfig, verbose: bool = True) -> str:
         json.dump(metrics, f, indent=2)
 
     if verbose:
-        print(f"Experiment complete. Results saved to {output_dir}")
-        print("\nTo visualize and analyze results:")
-        print("  1. Run: jupyter notebook")
-        print("  2. Open: notebooks/03-results-analysis.ipynb")
-        print("  3. The notebook will automatically load the most recent results")
+        print(f"Experiment complete. Results saved to: {output_dir}")
 
     return str(output_dir)
 
@@ -229,12 +233,11 @@ def main():
 
     # Run experiment (verbose by default)
     try:
-        output_dir = run_experiment(config, verbose=not args.quiet)
-        print(f"Experiment complete: {output_dir}")
-        print("\nTo visualize and analyze results:")
-        print("  1. Run: jupyter notebook")
-        print("  2. Open: notebooks/03-results-analysis.ipynb")
-        print("  3. The notebook will automatically load the most recent results")
+        verbose = not args.quiet
+        output_dir = run_experiment(config, verbose=verbose)
+        print(f"Experiment complete. Results saved to: {output_dir}")
+        if verbose:
+            print_analysis_guidance()
         return 0
     except Exception as e:
         print(f"Experiment failed: {e}", file=sys.stderr)
