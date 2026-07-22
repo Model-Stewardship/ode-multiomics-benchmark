@@ -236,8 +236,7 @@ def main():
         verbose = not args.quiet
         output_dir = run_experiment(config, verbose=verbose)
         print(f"Experiment complete. Results saved to: {output_dir}")
-        if verbose:
-            print_analysis_guidance()
+        print_analysis_guidance()
         return 0
     except Exception as e:
         print(f"Experiment failed: {e}", file=sys.stderr)
