@@ -200,17 +200,33 @@ uv run python -m src.run_experiment --config experiments/config_baseline.yaml
 uv run python -m src.run_experiment --config experiments/config_baseline.yaml --quiet
 ```
 
-**Experiment Duration:** With default config (5 replicates, ~500 patients, 500 UDE epochs):
-- Synthetic patient generation: ~5-10 sec per replicate
+**Experiment Duration:** With default config (100 patients, 5 replicates, 500 UDE epochs):
+- Synthetic patient generation: ~2-5 sec per replicate
 - MOTIF calibration: ~30-60 sec per patient (bottleneck)
 - UDE training: ~5-15 min per replicate (most time-consuming)
-- **Total:** ~1-2 hours for 5 replicates (GPU-accelerated PyTorch if available)
+- **Total:** ~25 hours on local CPU, ~12 hours on Colab T4 GPU
+
+**Note:** The 100×5 configuration is designed for teaching and rapid validation. For publication-quality studies, consider scaling to 200+ patients with 5 replicates (estimated 1-2 days locally), or use cloud infrastructure for parallel runs.
 
 Results are saved to `results/` with timestamp-based subdirectories. Each replicate saves:
 - `cohort.pkl` — synthetic patient data
 - `motif_results.pkl` — MOTIF pipeline outputs
 - `ude_results.pkl` — UDE + SINDy outputs
 - `metrics.json` — aggregated recovery and classification metrics
+
+### Scaling Experiments
+
+For larger studies, use the intermediate configs:
+- `config_baseline_colab_200x3.yaml` — 200 patients, 3 replicates (~18 hours locally)
+- `config_baseline_colab_200x5.yaml` — 200 patients, 5 replicates (~30 hours locally)
+
+For rapid prototyping on Colab:
+- `config_fast.yaml` — 50 patients, 2 replicates, 50 UDE epochs (~10 minutes)
+
+Example:
+```bash
+uv run python -m src.run_experiment --config experiments/config_baseline_colab_200x5.yaml
+```
 
 ## Cleaning Up Between Runs
 
