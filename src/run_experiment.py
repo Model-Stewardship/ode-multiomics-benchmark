@@ -208,6 +208,10 @@ def run_experiment(config: ExperimentConfig, verbose: bool = True) -> str:
 
     if verbose:
         print(f"Experiment complete. Results saved to {output_dir}")
+        print("\nTo visualize and analyze results:")
+        print("  1. Run: jupyter notebook")
+        print("  2. Open: notebooks/03-results-analysis.ipynb")
+        print("  3. The notebook will automatically load the most recent results")
 
     return str(output_dir)
 
@@ -227,6 +231,10 @@ def main():
     try:
         output_dir = run_experiment(config, verbose=not args.quiet)
         print(f"Experiment complete: {output_dir}")
+        print("\nTo visualize and analyze results:")
+        print("  1. Run: jupyter notebook")
+        print("  2. Open: notebooks/03-results-analysis.ipynb")
+        print("  3. The notebook will automatically load the most recent results")
         return 0
     except Exception as e:
         print(f"Experiment failed: {e}", file=sys.stderr)
