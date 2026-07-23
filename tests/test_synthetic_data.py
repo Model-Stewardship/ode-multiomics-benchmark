@@ -22,10 +22,10 @@ class TestPatientGeneration(unittest.TestCase):
         patient = generate_patient(P0=5.0, seed=42)
 
         required_keys = {
-            'id', 'P0', 'outcome', 'params',
+            'id', 'P0', 'kpg', 'outcome', 'params',
             'obs_Nstar', 'obs_CA', 'obs_f', 'obs_t',
             'true_P', 'true_D', 'true_h',
-            'true_traj', 'true_t'
+            'true_traj_long', 'true_t_long'
         }
         assert set(patient.keys()) == required_keys
 
@@ -129,11 +129,11 @@ class TestCohortGeneration(unittest.TestCase):
 
         # Verify P0 values are in correct ranges for sampled groups
         for p in resolution_patients:
-            assert 0.5 <= p['P0'] <= 3.5
+            assert 0.3 <= p['P0'] <= 0.9
         for p in chronic_patients:
-            assert 4.0 <= p['P0'] <= 9.0
+            assert 1.2 <= p['P0'] <= 2.5
         for p in death_patients:
-            assert 11.0 <= p['P0'] <= 20.0
+            assert 0.3 <= p['P0'] <= 1.3
 
     def test_cohort_all_patients_valid(self):
         """Verify all cohort patients have valid structure."""
@@ -215,8 +215,8 @@ class TestCohortBaseline(unittest.TestCase):
 
         # Verify patients have diverse P0 values
         P0_values = [p['P0'] for p in cohort]
-        assert min(P0_values) < 5.0  # Some low P0 (resolution range)
-        assert max(P0_values) > 15.0  # Some high P0 (death range)
+        assert min(P0_values) < 1.0  # Some low P0 (resolution/death range)
+        assert max(P0_values) < 3.0  # All P0 values are small in new spec
 
 
 if __name__ == '__main__':
