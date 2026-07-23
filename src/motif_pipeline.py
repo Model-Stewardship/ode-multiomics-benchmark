@@ -135,10 +135,16 @@ def calibrate_patient(
                 raise StopIteration("calibration timeout")
 
         try:
+            # Add bounds to constrain log(P0) to keep P0 in (0.01, 100)
+            # Other parameters (log-space k_pg, s_nr, s_c) are unconstrained
+            n_params = len(x0)
+            bounds = [(None, None)] * (n_params - 1) + [(np.log(0.01), np.log(100))]
+
             result = minimize(
                 residual_fn,
                 x0,
                 method='L-BFGS-B',
+                bounds=bounds,
                 options={'ftol': 1e-6, 'maxiter': 500},
                 callback=timeout_callback,
             )

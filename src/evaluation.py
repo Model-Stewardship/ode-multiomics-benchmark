@@ -168,6 +168,10 @@ def compute_classification_metrics(
         cm = confusion_matrix(y_true, y_pred)
         results['confusion_matrix'] = cm.tolist()
 
+    # Add accuracy (works for both binary and multi-class)
+    from sklearn.metrics import accuracy_score
+    results['accuracy'] = float(accuracy_score(y_true, y_pred))
+
     return results
 
 

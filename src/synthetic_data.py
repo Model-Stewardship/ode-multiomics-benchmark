@@ -105,7 +105,7 @@ def generate_patient(
     outcome = get_outcome(sol_long)
 
     # Extract values at clinical observation timepoints (0-72h, paper's Figure 5 window)
-    t_obs = np.linspace(0, 72, 25)
+    t_obs = OBS_TIMEPOINTS.astype(float)
     sol_obs = solve_reynolds(patient_params, x0, t_obs, method='LSODA')
 
     # Add measurement noise to observations
