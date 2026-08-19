@@ -23,6 +23,22 @@ recovery evaluation possible.
 
 ---
 
+## Notebooks
+
+The notebooks are the best starting point for understanding the project — they contain
+narrative explanations, figures, and worked examples that can be read directly on
+GitHub without running any code.
+
+| Notebook | Description |
+|---|---|
+| [00 · Quick Start](notebooks/00-quickstart.ipynb) | End-to-end walkthrough: generate a 20-patient cohort, run MOTIF calibration, view fit quality |
+| [01 · MOTIF Deep Dive](notebooks/01-motif-deep-dive.ipynb) | Per-patient ODE calibration and correlation-based biomarker discovery |
+| [02 · UDE Deep Dive](notebooks/02-ude-deep-dive.ipynb) | Train a neural ODE to learn unknown kinetics; visualize the learned clearance function |
+| [03 · Results Analysis](notebooks/03-results-analysis.ipynb) | Compare MOTIF vs UDE on state-variable recovery and outcome classification |
+| [04 · Methodology](notebooks/04-methodology.ipynb) | Full reference: ODE parameters, pipeline steps, experimental conditions, evaluation metrics |
+
+---
+
 ## Scientific Context
 
 ### The Reynolds (2006) Model
@@ -106,11 +122,12 @@ ode-multiomics-benchmark/
 │   └── plotting.py                    ← All figure generation
 │
 ├── notebooks/
-│   ├── 01_reynolds_ode_exploration.ipynb
-│   ├── 02_synthetic_patient_generation.ipynb
-│   ├── 03_motif_pipeline.ipynb
-│   ├── 04_ude_sindy_pipeline.ipynb
-│   └── 05_comparison_and_figures.ipynb
+│   ├── 00-quickstart.ipynb            ← End-to-end quick start
+│   ├── 01-motif-deep-dive.ipynb       ← MOTIF calibration and biomarker discovery
+│   ├── 02-ude-deep-dive.ipynb         ← UDE training and learned kinetics
+│   ├── 03-results-analysis.ipynb      ← MOTIF vs UDE comparison
+│   ├── 04-methodology.ipynb           ← Full methodology reference
+│   └── run_baseline_colab.ipynb       ← Colab baseline runner
 │
 ├── experiments/
 │   ├── config_baseline.yaml           ← Default experiment configuration
